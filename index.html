@@ -334,7 +334,55 @@ function bAccept(){sold(cur,cur.s=='hag'?cur.wtp:cur.item.price)}
 function bRefuse(){addRev(cur,3,'Giá hơi cao so với mình.');leave()}
 function closeDay(){G.open=false;confirmC=false;queue.forEach(q=>gone.push(q));queue=[];cur=null;const st=S.st,avg=st.length?(st.reduce((a,b)=>a+b)/st.length).toFixed(1):'—';summ={avg,dr:G.rep-S.rep0};G.log.unshift(`Ngày ${G.day}: ${et()} ${S.cust} khách, ${S.deals} giao dịch, lãi ${fm(S.rev-S.buy-S.mats)}.`);mode='main';save();rd()}
 function newDay(){G.day++;G.min=480;ev=pick(EV);G.inv.forEach(i=>{if(!i.shown)i.cond=Math.max(5,i.cond-(G.lv<2?2:1))});S=newS();summ=null;G.notes=[];
-G.pawns=G.pawns.filter(p=>{if(p.due>G.day)return true;if(Math.random()<.55+p.npc.aff*.05){G.money+=p.redeem;G.tot.rev+=p.redeem;S.rev+=p.redeem;p.npc.aff++;G.notes.push(`${p.npc.n} đã chuộc ${p.item.name}, tiệm thu ${fm(p.redeem)}.`)}else{p.item.cost=p.loan;p.item.shown=false;G.inv.push(p.item);G.notes.push(`${p.npc.n} không chuộc ${p.item.name}. Món đồ thuộc về tiệm!`)}return false});snd('day');genQ();rd();ui()}
+G.pawns=G.pawns.filter(p=>{
+
+    if(p.due>G.day)
+        return true;
+
+    const mod={
+        'Minh (sinh viên)':.5,
+        'Nam (khó tính)':.85,
+        'Hùng thương lái':.9,
+        'Mai (sưu tầm)':.95,
+        'Ông Sáu (nóng tính)':.7
+    }[p.npc.n]||.75;
+
+    const knowledgeValue=tv(p.item)*mod;
+    const L=p.loan/knowledgeValue;
+
+    let chance=L<=.25?95:L<=.4?85:L<=.55?70:L<=.7?50:L<=.85?30:15;
+
+    chance+=(p.npc.aff||0)*3;
+    chance+=(G.rep-50)/10;
+    chance=Math.max(10,Math.min(95,chance));
+
+    if(Math.random()*100<chance){
+
+        G.money+=p.redeem;
+        G.tot.rev+=p.redeem;
+        S.rev+=p.redeem;
+
+        p.npc.aff++;
+
+        G.notes.push(
+            `${p.npc.n} đã chuộc ${p.item.name}, tiệm thu ${fm(p.redeem)}.`
+        );
+
+    }else{
+
+        p.item.cost=p.loan;
+        p.item.shown=false;
+        p.item.fresh=G.day;
+
+        G.inv.push(p.item);
+
+        G.notes.push(
+            `${p.npc.n} không chuộc ${p.item.name}. Món đồ thuộc về tiệm!`
+        );
+    }
+
+    return false;
+});snd('day');genQ();rd();ui()}
 function openShop(){snd('door');G.open=true;rd()}
 /* kho / xưởng / cửa hàng */
 function setP(id,v){G.inv.find(i=>i.id==id).price=Math.max(10,+v||10)}
@@ -342,7 +390,7 @@ function tg(id){const i=G.inv.find(x=>x.id==id);if(!i.shown&&G.inv.filter(x=>x.s
 function ap(id){G.inv.find(i=>i.id==id).known=true;G.min+=am();rd();ui()}
 function buyM(k,n){const cost=M[k][2]*n;if(G.money<cost)return;G.money-=cost;G.mats[k]=(G.mats[k]||0)+n;S.mats+=cost;snd('coin');G.tot.cost+=cost;rd();ui()}
 function repair(id){if(working)return;const it=G.inv.find(x=>x.id==id),t=T[it.type];let cost=0;for(const k in t.m)if((G.mats[k]||0)<t.m[k])return;for(const k in t.m){G.mats[k]-=t.m[k];cost+=r10(M[k][2]*(G.mp&&G.mp[k]||1))*t.m[k]}it.cost+=cost;if(Math.random()<.2*((G.tl.sol||1)-1)){const k0=Object.keys(t.m)[0];G.mats[k0]=(G.mats[k0]||0)+t.m[k0]}working={it,step:0,steps:t.s.split(',')};rd();
-const iv=setInterval(()=>{snd('tick');working.step++;if(working.step>=working.steps.length){clearInterval(iv);it.cond=it.cust?90:Math.min(98,it.cond+rnd(28,45)+4*(G.tl.scr-1)+3*(G.tl.pol-1));it.repairs++;it.orig=Math.max(20,it.orig-4);S.fixed++;snd('done');if(it.cust){G.inv.splice(G.inv.indexOf(it),1);G.money+=it.fee;G.tot.rev+=it.fee;S.rev+=it.fee;S.deals++;S.sold.push('(sửa) '+it.name);fx.push({t:'+'+fm(it.fee),x:282,y:90,c:'#2a7a20',l:80});addRev({npc:it.cust,x:282,y:112},it.cond>=85?5:4)}fx.push({t:'✨ Xong!',x:282,y:70,c:'#2a7a20',l:80});working=null}rd()},850-150*(G.tl.pli-1))}
+const iv=setInterval(()=>{snd('tick');working.step++;if(working.step>=working.steps.length){clearInterval(iv);const tier=tr(it);const cap=[98,96,93,90,87,84][tier];const rate=[0.60,0.50,0.40,0.30,0.20,0.15][tier];const gain=Math.round((100-it.cond)*(rate+Math.random()*0.05));const bonus=4*(G.tl.scr-1)+3*(G.tl.pol-1);it.cond=it.cust?90:Math.min(cap,it.cond+gain+bonus);it.repairs++;it.orig=Math.max(20,it.orig-4);S.fixed++;snd('done');if(it.cust){G.inv.splice(G.inv.indexOf(it),1);G.money+=it.fee;G.tot.rev+=it.fee;S.rev+=it.fee;S.deals++;S.sold.push('(sửa) '+it.name);fx.push({t:'+'+fm(it.fee),x:282,y:90,c:'#2a7a20',l:80});addRev({npc:it.cust,x:282,y:112},it.cond>=85?5:4)}fx.push({t:'✨ Xong!',x:282,y:70,c:'#2a7a20',l:80});working=null}rd()},850-150*(G.tl.pli-1))}
 function upg(){const n=LV[G.lv];if(!n||G.money<n[1])return;G.money-=n[1];G.tot.cost+=n[1];G.lv++;snd('up');fx.push({t:'🏗️ Nâng cấp!',x:160,y:60,c:'#2a7a20',l:120});rd();ui()}
 function reply(i){const t=$('#rp'+i).value.trim();if(!t)return;const r=G.rev[i],bad=/(^|[\s,.!?])(đm|đmm|vcl|ngu|biến|cút|khùng|điên|câm)($|[\s,.!?])/i.test(t),good=/(cảm ơn|xin lỗi|hoan nghênh|quay lại|mong|chúc|rất tiếc|thân)/i.test(t);r.rp=t;
 if(bad){r.ans=pick(['Thái độ của tiệm như vậy thì tôi không quay lại đâu.','Vậy à? Tôi sẽ kể với mọi người ở khu phố này.']);r.npc.aff-=3;G.rep=cl(G.rep-4,0,100)}else if(good){r.ans=pick(['Ừ, cảm ơn chủ tiệm. Lần sau mình sẽ ghé nữa.','Cảm ơn chủ tiệm đã phản hồi, mình hiểu rồi.']);r.npc.aff+=2;G.rep=cl(G.rep+(r.s<=3?3:1),0,100)}else{r.ans='Ừ, mình hiểu.';r.npc.aff+=0}rd();ui()}
@@ -360,11 +408,161 @@ if(q.kind=='fix'){const t=T[i.type],rc=Object.entries(t.m).map(([k,n])=>`${M[k][
 else h+=`<div class=card>${i.icon} <b>${i.name}</b> · ${i.cond}% · Giá tiệm: <b>${fm(i.price)}</b> · Vốn: ${fm(i.cost)}</div>`+(q.s=='ok'?`<button onclick=bAccept()>💰 Bán giá ${fm(i.price)}</button>`:q.s=='hag'?`<button onclick=bAccept()>Đồng ý ${fm(q.wtp)}</button><button class=red onclick=bRefuse()>Giữ giá</button>`:`<button onclick=bRefuse()>Thôi vậy</button>`);
 return h}
 function invH(){const cap=LV[G.lv-1][2],sl=LV[G.lv-1][3];let h=`<h3>📦 Kho ${G.inv.length}/${cap} · Trưng bày ${G.inv.filter(i=>i.shown).length}/${sl}</h3>`;if(!G.inv.length)h+='<p>Kho trống. Hãy mua đồ từ khách!</p>';
-G.inv.forEach(i=>{h+=`<div class=row><div>${i.icon} <b>${i.name}</b> ${i.cond}% ${i.known?(i.fake?'⚠️Giả':QL(i)):''}<br><small>Vốn ${fm(i.cost)} · Thị trường ${fm(vis(i))}${i.known?'':'*'} · sửa ${i.repairs} lần</small></div><div>${i.cust?'<small>🔧 Đồ khách · phí '+fm(i.fee)+'</small>':''}<span style="${i.cust?'display:none':''}">Bán <input class=pin readonly inputmode=none value=${i.price||r10(vis(i)*1.15)} data-id=${i.id} onclick=openPad(this)><button onclick="tg(${i.id})">${i.shown?'Cất':'Trưng bày'}</button>${i.known?'':`<button onclick="ap(${i.id})">🔎</button>`}</span></div></div>`});return h+'<small>* Giá ước tính. Thẩm định để biết hàng giả/hiếm. Đặt giá cao: lãi cao nhưng khó bán.</small>'}
-function wkH0(){if(G.lv<2)return'<h3>🛠️ Xưởng</h3><p>Chưa có xưởng. Nâng cấp tiệm lên cấp 2 để mở bàn sửa!</p>';
-if(working){const p=working.step/working.steps.length*100;return`<h3>🔧 Đang sửa ${working.it.icon} ${working.it.name}</h3><div class=bar><i style="width:${p}%"></i></div><p>${working.steps.map((s,k)=>(k<working.step?'✅':k==working.step?'🔧':'⬜')+' '+s).join('<br>')}</p>`}
-let h='<h3>🛠️ Xưởng sửa chữa</h3>',l=G.inv.filter(i=>i.cond<98);if(!l.length)h+='<p>Không có món nào cần sửa.</p>';
-l.forEach(i=>{const t=T[i.type];let ok=true;const rc=Object.entries(t.m).map(([k,n])=>{const has=G.mats[k]||0;if(has<n)ok=false;return`${M[k][0]} ${M[k][1]}: ${has}/${n} ${has>=n?'✅':'❌'}`}).join(' · ');h+=`<div class=row><div>${i.icon} <b>${i.name}</b> ${i.cond}%<br><small>${rc}</small></div><button ${ok?'':'disabled'} onclick="repair(${i.id})">${G.staff&&G.staff.mech?'Nhờ sửa':'Sửa'}</button></div>`});return h}
+G.inv.forEach(i=>{h+=`<div class=row><div>${i.icon} <b>${i.name}</b> ${i.cond}% ${i.known?(i.fake?'⚠️Giả':QL(i)):''}<br><small>
+
+${(i.repairs||0)==0
+ ? '✅ Chưa từng sửa'
+ : (i.repairs||0)==1
+ ? '🔧 Đã sửa 1 lần (80%)'
+ : (i.repairs||0)==2
+ ? '🔧 Đã sửa 2 lần (60%)'
+ : '⚠️ Phục chế nhiều lần (40%)'
+}
+
+</small>
+
+<br>
+
+<small>
+
+Vốn ${fm(i.cost)}
+· Thị trường ${fm(vis(i))}
+${i.known?'':'*'}
+
+</small>
+
+</div><div>${i.cust?'<small>🔧 Đồ khách · phí '+fm(i.fee)+'</small>':''}<span style="${i.cust?'display:none':''}">Bán <input class=pin readonly inputmode=none value=${i.price||r10(vis(i)*1.15)} data-id=${i.id} onclick=openPad(this)><button onclick="tg(${i.id})">${i.shown?'Cất':'Trưng bày'}</button>${i.known?'':`<button onclick="ap(${i.id})">🔎</button>`}</span></div></div>`});return h+'<small>* Giá ước tính. Thẩm định để biết hàng giả/hiếm. Đặt giá cao: lãi cao nhưng khó bán.</small>'}
+function repUI(i){
+
+    const r=i.repairs|0;
+
+    const pct=
+        r==0 ? 100 :
+        r==1 ? 80 :
+        r==2 ? 60 :
+        40;
+
+    return `
+        <div
+            style="
+                margin:4px 0;
+                padding:5px 8px;
+                border:2px solid #b08a2e;
+                border-radius:8px;
+                background:#f6e7bd;
+                color:#6b4e12;
+                font-size:12px;
+                line-height:1.4
+            "
+        >
+            ${
+                r==0
+                ? '✅ Chưa từng sửa'
+                : r==1
+                ? '🔧 Đã sửa 1 lần'
+                : r==2
+                ? '🔧 Đã sửa 2 lần'
+                : '⚠️ Phục chế nhiều lần'
+            }
+
+            <br>
+
+            ⚠️ Hiệu quả sửa tiếp:
+            <b>${pct}%</b>
+        </div>
+    `;
+}
+
+function wkH0(){
+
+    if(G.lv<2)
+        return '<h3>🛠️ Xưởng</h3><p>Chưa có xưởng. Nâng cấp tiệm lên cấp 2 để mở bàn sửa!</p>';
+
+    if(working){
+
+        const p=working.step/working.steps.length*100;
+
+        return `
+        <h3>🔧 Đang sửa ${working.it.icon} ${working.it.name}</h3>
+
+        <div class=bar>
+            <i style="width:${p}%"></i>
+        </div>
+
+        <p>
+        ${
+            working.steps
+            .map((s,k)=>
+                (k<working.step?'✅':k==working.step?'🔧':'⬜')
+                +' '+s
+            )
+            .join('<br>')
+        }
+        </p>
+        `;
+    }
+
+    let h='<h3>🛠️ Xưởng sửa chữa</h3>';
+
+    const l=G.inv.filter(i=>i.cond<98);
+
+    if(!l.length)
+        h+='<p>Không có món nào cần sửa.</p>';
+
+    l.forEach(i=>{
+
+        const t=T[i.type];
+
+        let ok=true;
+
+        const rc=Object.entries(t.m)
+        .map(([k,n])=>{
+
+            const has=G.mats[k]||0;
+
+            if(has<n)
+                ok=false;
+
+            return `${M[k][0]} ${M[k][1]}: ${has}/${n} ${has>=n?'✅':'❌'}`;
+
+        })
+        .join(' · ');
+
+        h+=`
+        <div class=row>
+
+            <div>
+
+                ${i.icon}
+                <b>${i.name}</b>
+
+                ${i.cond}%
+
+                ${
+                    i.known
+                    ? (i.fake ? '⚠️Giả' : QL(i))
+                    : ''
+                }
+
+                ${repUI(i)}
+
+                <small>${rc}</small>
+
+            </div>
+
+            <button
+                ${ok?'':'disabled'}
+                onclick="repair(${i.id})"
+            >
+                ${G.staff&&G.staff.mech?'Nhờ sửa':'Sửa'}
+            </button>
+
+        </div>
+        `;
+    });
+
+    return h;
+}
 function shopH(){let h='<h3>🏬 Cửa hàng vật liệu</h3>';for(const k in M)h+=`<div class=row><div>${M[k][0]} ${M[k][1]} · ${fm(M[k][2])} · có <b>${G.mats[k]||0}</b></div><div><button onclick="buyM('${k}',1)">+1</button><button onclick="buyM('${k}',5)">+5</button></div></div>`;return h}
 function revH(){let h='<h3>⭐ Đánh giá</h3><div>'+[0,5,4,3,2,1].map(s=>`<button onclick="rf=${s};rd()" ${rf==s?'disabled':''}>${s?s+'★':'Tất cả'}</button>`).join('')+'</div>';G.rev.forEach((r,i)=>{if(rf&&r.s!=rf)return;h+=`<div class=card>${'⭐'.repeat(r.s)} <b>${r.n}</b> <small>Ngày ${r.d}${r.it?' · '+r.it:''}</small><br>“${r.t}”`+(r.rp?`<br>↳ Bạn: “${r.rp}”<br>↳ ${r.n}: “${r.ans}”`:`<br><input class=w id=rp${i} placeholder="Viết phản hồi…" enterkeyhint=send autocomplete=off><button onclick="reply(${i})">Gửi</button>`)+'</div>'});return h+(G.rev.length?'':'<p>Chưa có đánh giá nào.</p>')}
 function upH0(){let h='<h3>🏗️ Nâng cấp tiệm</h3><p>Hiện tại: <b>'+LV[G.lv-1][0]+'</b></p>';const n=LV[G.lv],inf=['','Mở xưởng sửa chữa, tủ kính 4 chỗ, kho 14, thảm & bàn thợ.','Tiệm đồ cổ: tủ 6 chỗ, kho 24, nhiều đồ hiếm hơn, tranh & bục trưng bày.','Phòng thẩm định riêng: thẩm định gần như tức thì, kho 30, tủ 8 chỗ.','Khu đồ quý: tủ 10 chỗ, kho 40, nhiều đồ hiếm và khách giàu hơn.','Nhà đấu giá: kho 60, tủ 14 chỗ, mở đấu giá đồ trong Kho.'];return h+(n?`<div class=card><b>${n[0]}</b> · ${fm(n[1])}<br>${inf[G.lv]}</div><button class=big ${G.money>=n[1]?'':'disabled'} onclick=upg()>🏗️ Nâng cấp</button>`:'<p>Đã đạt cấp cao nhất hiện có! 🏆</p>')}
@@ -439,7 +637,7 @@ const _nd2=newDay;newDay=function(){_nd2();const th=G.thr||[];G.thr=[];if(th.len
 /* ===== PATCH v3: độ khó, lịch, đánh giá, cài đặt, sự kiện ===== */
 Object.values(M).forEach(m=>m[2]=r10(m[2]*1.5));
 LV[1][1]=6000;LV[2][1]=18000;LV[3][1]=40000;LV[4][1]=80000;LV[5][1]=160000;
-G.c=Object.assign({deals:0,fixed:0,rare:0,tax:0,rob:0},G.c);G.ach=G.ach||{};G.sched=G.sched||[];G.sec=G.sec||0;G.ltr=G.ltr||0;
+G.c=Object.assign({deals:0,fixed:0,rare:0,tax:0,rob:0},G.c);G.ach=G.ach||{};G.sched=G.sched||[];G.sec=G.sec||0;G.ltr=G.ltr||0;if(G.ltc==null){G.ltc=G.tot.cost;G.ltr=G.tot.rev}
 const cn=k=>G.c[k]+((k=='deals'||k=='fixed')?(S[k]||0):0);
 const _sv0=save;save=function(){if(!window.nosv)_sv0()};
 /* ---- NPC: tính cách + người nổi tiếng ---- */
@@ -470,14 +668,14 @@ const _mh=mainH;mainH=function(){let h=_mh();if(cur&&mode=='main'&&!summ&&G.open
 /* ---- lịch sắp tới ---- */
 const CAL=[[20,8,{t:'⚽ Mùa World Cup! Dân tình ăn nhậu xem bóng, khách ra vào tấp nập.',m:1.45,sb:.6},'⚽ Mùa World Cup'],[50,3,{t:'🏮 Trung thu! Đèn lồng khắp phố, khách đông vui.',m:1.7,sb:.5},'🏮 Tết Trung thu'],[85,2,{t:'🎄 Giáng sinh: người người đi sắm quà.',m:1.6,sb:.4},'🎄 Giáng sinh'],[105,6,{t:'🧧 Tết Nguyên Đán! Ai cũng cần tiền sắm Tết, đồ đổ về tiệm.',m:2,sb:.95},'🧧 Tết Nguyên Đán']];
 const RK=[()=>({lab:'⛈️ Bão sắp đổ bộ',t:'⛈️ Bão đang đổ bộ! Phố vắng tanh.',n:rnd(1,2),ev:{m:.15,rain:1}}),()=>{const p=pick(['Hàn Quốc','Nhật Bản','Pháp','Nga','Úc','Thái Lan']);return{lab:'🚌 Đoàn du lịch từ '+p,t:'🚌 Đoàn du lịch '+p+' đang dạo phố, khách đông nghịt!',n:rnd(1,3),ev:{m:2.3,sb:.3}}},()=>{const p=pick(['Hẻm Cũ','Mắt Nâu','Tiệm Ma Ám','Bố Già Cầm Đồ']);return{lab:'🎬 Đoàn phim "'+p+'" tới quay',t:'🎬 Đoàn phim "'+p+'" quay quanh phố, khách tò mò kéo đến.',n:rnd(1,2),ev:{m:1.5,sb:.5,film:1}}}];
-const estTax=()=>r10(Math.max(300,(G.tot.rev-G.ltr)*.08));
+const estTax=()=>r10(Math.max(300,((G.tot.rev-G.ltr)-(G.tot.cost-G.ltc))*.08));
 function genSched(){G.sched=G.sched.filter(s=>s.d+s.n>G.day);let g=0;while(G.sched.filter(s=>s.d>G.day).length<2&&g++<9){const d=G.day+rnd(2,9);if(G.sched.some(s=>d<s.d+s.n+1&&s.d<d+3))continue;const o=pick(RK)();G.sched.push({d,n:o.n,lab:o.lab,ev:{...o.ev,t:o.t}})}}
 function actEv(day){const s=G.sched.find(s=>s.d<=day&&day<s.d+s.n);if(s)return s.ev;const c=CAL.find(c=>day>=c[0]&&day<c[0]+c[1]);return c?c[2]:null}
 function upc(){const r=[];G.sched.forEach(s=>r.push({d:Math.max(s.d,G.day),n:s.n,lab:s.lab,on:s.d<=G.day}));for(let d=G.day;d<=G.day+40;d++){CAL.forEach(c=>{if(d==c[0]||(d==G.day&&d>c[0]&&d<c[0]+c[1]))r.push({d,n:c[1]-(d==G.day?d-c[0]:0),lab:c[3],on:d==G.day&&d>=c[0]})});if(d%30==0)r.push({d,n:1,lab:'🧾 Đóng thuế hàng tháng (~'+fm(estTax())+')',on:d==G.day})}return r.sort((a,b)=>a.d-b.d)}
 function schedH(){return'<h3>🗓️ Lịch sắp tới</h3>'+upc().slice(0,7).map(x=>`<div class=row><div>${x.lab}<br><small>Ngày ${x.d}${x.n>1?'–'+(x.d+x.n-1):''} · ${x.on?'đang diễn ra':'còn '+(x.d-G.day)+' ngày'}</small></div></div>`).join('')}
 /* ---- thuế, kiểm tra, an ninh ---- */
 function audit(){const f=G.inv.filter(i=>i.shown&&i.fake).length,fine=f*300+(G.taxOk===false?800:0);if(!fine){G.rep=cl(G.rep+2,0,100);toast('🧾 Cục thuế kiểm tra: sổ sách sạch sẽ, +2 uy tín!')}else{const p=Math.min(G.money,fine);ad(-p);G.rep=cl(G.rep-3,0,100);G.taxOk=true;toast('🚨 Cục thuế phạt '+fm(p)+(f?' vì bày bán hàng giả':' vì nợ thuế')+'!')}ui()}
-function payTax(){const t=estTax();G.ltr=G.tot.rev;if(G.money>=t){ad(-t);G.c.tax++;G.taxOk=true;G.notes.push('🧾 Đã đóng thuế tháng: -'+fm(t))}else{const p=G.money;ad(-p);G.rep=cl(G.rep-6,0,100);G.taxOk=false;G.notes.push('🧾 Không đủ tiền đóng thuế! Cục thuế sẽ đến kiểm tra.');G.sched.push({d:G.day+2,n:1,lab:'🕵️ Cục thuế kiểm tra vì nợ thuế',ev:{t:'🕵️ Cục thuế ngồi lì trong tiệm kiểm tra sổ sách.',m:.6}});G.aud=G.day+2}}
+function payTax(){const t=estTax();G.ltr=G.tot.rev;G.ltc=G.tot.cost+Math.min(G.money,t);G.ltc=G.tot.cost+Math.min(G.money,t);if(G.money>=t){ad(-t);G.c.tax++;G.taxOk=true;G.notes.push('🧾 Đã đóng thuế tháng: -'+fm(t))}else{const p=G.money;ad(-p);G.rep=cl(G.rep-6,0,100);G.taxOk=false;G.notes.push('🧾 Không đủ tiền đóng thuế! Cục thuế sẽ đến kiểm tra.');G.sched.push({d:G.day+2,n:1,lab:'🕵️ Cục thuế kiểm tra vì nợ thuế',ev:{t:'🕵️ Cục thuế ngồi lì trong tiệm kiểm tra sổ sách.',m:.6}});G.aud=G.day+2}}
 SU.push(['🔫 Một tên bịt mặt xông vào tiệm!',()=>setTimeout(()=>{if(G.sec>=2&&Math.random()<.7){G.c.rob++;G.rep=cl(G.rep+2,0,100);toast('🛡️ Bảo vệ khống chế được tên cướp! +2 uy tín');return}const l=Math.min(G.money,r10(G.money*rnd(12,25)/100*(G.sec?.6:1)));ad(-l);G.rep=cl(G.rep-2,0,100);toast('😱 Bị cướp mất '+fm(l)+'!'+(G.sec?'':' Nên lắp camera và thuê bảo vệ.'));ui()},1800)],
 ['🕵️ Cục thuế đến kiểm tra sổ sách đột xuất!',()=>setTimeout(audit,1800)],
 ['😠 Nhóm giang hồ ghé tiệm đòi phí "bảo kê"!',()=>setTimeout(()=>{if(G.sec>=1&&Math.random()<.5){G.c.rob++;toast('💪 Bạn cứng rắn, đuổi được chúng!');return}const l=Math.min(G.money,rnd(200,450));ad(-l);toast('💸 Đành nộp '+fm(l)+' cho yên chuyện.');ui()},1800)],
@@ -488,7 +686,55 @@ function buySec(){const s=SECN[G.sec];if(!s||G.money<s[1])return;G.money-=s[1];G
 const REQ={2:[['≥ 12 giao dịch',()=>cn('deals')>=12],['Uy tín ≥ 3,8★',()=>G.rep>=76]],3:[['≥ 6 lần sửa xong',()=>cn('fixed')>=6],['Bán 1 đồ hiếm',()=>G.c.rare>=1],['Đã chơi ≥ 8 ngày',()=>G.day>=8]],4:[['≥ 50 giao dịch',()=>cn('deals')>=50],['Uy tín ≥ 4,2★',()=>G.rep>=84],['Đóng thuế ≥ 1 lần',()=>G.c.tax>=1]],5:[['≥ 18 lần sửa',()=>cn('fixed')>=18],['Bán 4 đồ hiếm',()=>G.c.rare>=4],['≥ 6 thành tựu',()=>Object.keys(G.ach).length>=6]],6:[['≥ 120 giao dịch',()=>cn('deals')>=120],['Uy tín ≥ 4,6★',()=>G.rep>=92],['Bán 8 đồ hiếm',()=>G.c.rare>=8],['Đóng thuế ≥ 3 lần',()=>G.c.tax>=3]]};
 const reqOk=()=>(REQ[G.lv+1]||[]).every(r=>r[1]());
 const _u0=upH0;upH0=function(){let h=_u0();if(LV[G.lv]&&REQ[G.lv+1]){h+='<div class=card><b>📋 Điều kiện nâng cấp</b><br>'+REQ[G.lv+1].map(r=>(r[1]()?'✅ ':'❌ ')+r[0]).join('<br>')+'</div>';if(!reqOk())h=h.replace('onclick=upg()','disabled onclick=upg()')}return h};
-const _upg=upg;upg=function(){if(!LV[G.lv]||!reqOk())return toast('🔒 Chưa đủ điều kiện nâng cấp!');_upg()};
+const _upg=upg;
+
+upg=function(){
+
+    if(G.lv>=3){
+
+        alert(
+`🏺 TIỆM ĐỒ CỔ
+
+🎉 Chúc mừng!
+
+Bạn đã đạt cấp tối đa của phiên bản hiện tại.
+
+Từ một tiệm cầm đồ nhỏ bé, bạn đã xây dựng được một trong những tiệm đồ cổ nổi tiếng nhất khu phố.
+
+Trong khi chờ những nội dung mới được cập nhật, bạn vẫn có thể:
+
+🏆 Hoàn thành toàn bộ thành tựu
+⭐ Nâng uy tín lên mức cao nhất
+🏺 Săn tìm đồ hiếm, cổ vật và báu vật
+💰 Tích lũy tài sản và mở rộng bộ sưu tập
+📖 Khám phá các sự kiện ngẫu nhiên
+📅 Xem bạn có thể duy trì tiệm được bao nhiêu ngày
+
+────────────────
+
+🚧 NỘI DUNG ĐANG PHÁT TRIỂN
+
+🔒 Phòng thẩm định
+🔒 Khu đồ quý
+🔒 Nhà đấu giá
+
+────────────────
+
+Cảm ơn bạn đã đồng hành cùng Tiệm Cầm Đồ!
+
+Mọi hành trình lớn đều bắt đầu từ một món đồ cũ.
+Hẹn gặp lại trong bản cập nhật tiếp theo.`
+        );
+
+        return;
+    }
+
+    if(!LV[G.lv]||!reqOk())
+        return toast('🔒 Chưa đủ điều kiện nâng cấp!');
+
+    _upg();
+};
+
 const _uh=upH;upH=function(){return _uh()+'<h3>🛡️ An ninh</h3>'+(G.sec>=2?'<small>Đã có đủ camera và bảo vệ.</small>':`<div class=row><div>${SECN[G.sec][0]}<br><small>${SECN[G.sec][2]}</small></div><button ${G.money>=SECN[G.sec][1]?'':'disabled'} onclick=buySec()>${fm(SECN[G.sec][1])}</button></div>`)};
 const _sd=sold;sold=function(q,p){const r=q.item&&q.item.rare&&!q.item.fake&&G.inv.includes(q.item);_sd(q,p);if(r)G.c.rare++};
 /* ---- thành tựu ---- */
@@ -575,7 +821,7 @@ function payLoan(){if(G.loan&&G.money>=G.loan.amt){ad(-G.loan.amt);G.loan=null;t
 function lose(why){if(G.over)return;G.over=1;G.open=false;queue=[];cur=null;const o=document.createElement('div');o.className='ov';o.innerHTML=`<div class=em>💀</div><h3>THUA GAME</h3><p>${why}</p><p>Bạn sống được ${G.day} ngày.</p><button class=big onclick=resetG2()>🔄 Chơi lại</button>`;document.body.appendChild(o)}
 function resetG2(){window.nosv=1;try{localStorage.removeItem('tcd1')}catch(e){}location.reload()}
 const loanH=()=>G.loan?`<div class=msg style="border-left-color:#8a2a8a;background:#ecd8f2;color:#6a1a7a">🦈 Nợ giang hồ: <b>${fm(G.loan.amt)}</b>, hạn ngày ${G.loan.due}. <button ${G.money>=G.loan.amt?'':'disabled'} onclick=payLoan()>Trả nợ</button></div>`:(G.money<need()*1.5?`<div class=msg style="border-left-color:#8a2a8a;background:#ecd8f2;color:#6a1a7a">🦈 Sắp hết tiền? Chủ nợ cho vay 3.000k, hạn 7 ngày trả 4.500k (lãi 50%). Không trả kịp là thua! <button onclick=takeLoan()>Vay</button></div>`:'');
-const _nd4=newDay;newDay=function(){if(G.money<need()){lose('Bạn không đủ tiền trả tiền thuê mặt bằng. Tiệm bị thu hồi.');return}_nd4();if(G.loan){if(G.day>=G.loan.due){if(G.money>=G.loan.amt){ad(-G.loan.amt);G.notes.push('🦈 Đã trả nợ giang hồ');G.loan=null}else{lose('Bạn không trả được nợ giang hồ đúng hạn. Chúng đã siết tiệm.');return}}else if(G.loan.due-G.day==1)G.notes.push('🦈 Ngày mai đến hạn trả nợ '+fm(G.loan.amt)+'!')}};
+const _nd4=newDay;newDay=function(){if(G.money<80+70*G.lv){lose('Bạn không đủ tiền trả tiền thuê mặt bằng. Tiệm bị thu hồi.');return}_nd4();if(G.loan){if(G.day>=G.loan.due){if(G.money>=G.loan.amt){ad(-G.loan.amt);G.notes.push('🦈 Đã trả nợ giang hồ');G.loan=null}else{lose('Bạn không trả được nợ giang hồ đúng hạn. Chúng đã siết tiệm.');return}}else if(G.loan.due-G.day==1)G.notes.push('🦈 Ngày mai đến hạn trả nợ '+fm(G.loan.amt)+'!')}};
 /* --- màn hình tiệm nhiều màu --- */
 const _mh3=mainH;mainH=function(){if(G.over)return'';if(cur&&mode=='main'&&G.open&&!summ&&!confirmC){if(cur.role)return roleH();if(cur.ap)return apH()}let h=_mh3();if(summ)return h+loanH();if(!G.open&&!confirmC){const C=t=>/thuế/.test(t)?'#7a2a9a':/thuê/.test(t)?'#b06010':/bão|mưa|cúm|điện/.test(t)?'#2a5aa0':/phim|du lịch|lễ|Tết|Trung thu|Giáng/.test(t)?'#c0306a':/nợ|🦈/.test(t)?'#8a2a8a':/Ngày mai/.test(t)?'#1a8a8a':'#2a7a3a';h=h.replace(/<p>(?!<small>)([\s\S]*?)<\/p>/g,(m,t)=>{const c=C(t);return`<div class=msg style="color:${c};border-left-color:${c};background:${c}1c">${t}</div>`});h=h.replace('<button class="big" onclick="openShop()">',loanH()+'<button class="big" onclick="openShop()">')}return h};
 /* --- nâng cấp bàn ghế / biển hiệu / nước trà --- */
@@ -979,7 +1225,7 @@ const _bkQ=bookH;bookH=function(){return _bkQ().replace(/hạn ngày (\d+)/g,(m,
 const _mhQ=mainH;mainH=function(){return _mhQ().replace('Khách chuộc: <b id=rd></b>','Khách chuộc nếu đủ ngày: <b id=rd></b><br><small>Họ có thể chuộc sớm và trả ít lãi hơn. Quá hạn không chuộc, đồ thuộc về tiệm.</small>')};
 const _ndT=newDay;newDay=function(){_ndT();if(G.over||TU.on)return;
 G.pawns=G.pawns.filter(p=>{const D=Math.max(1,Math.round((p.redeem/p.loan-1)/.03)),el=D-(p.due-G.day);if(p.due<=G.day||el<1)return true;if(Math.random()<.1+p.npc.aff*.03){const a=r10(p.loan*(1+.03*el));ad(a);p.npc.aff++;G.notes.push(`🔑 ${p.npc.n} chuộc sớm ${p.item.icon} ${p.item.name} sau ${el} ngày, tiệm thu ${fm(a)}.`);return false}return true});
-const sc=G.sec||0;if(G.day>=3&&Math.random()<.035*(sc>=2?.2:sc==1?.5:1)){const pool=G.inv.map(i=>({i})).concat(G.pawns.map(p=>({p})));if(pool.length){const t=pick(pool);let msg='';
+const sc=G.sec||0;if(G.day>=3&&Math.random()<.035*(sc>=2?.2:sc==1?.5:1)){const pool=G.inv.filter(i=>i.fresh!==G.day).map(i=>({i})).concat(G.pawns.map(p=>({p})));if(pool.length){const t=pick(pool);let msg='';
 if(sc&&Math.random()<.3*sc)msg='📹 Có kẻ đột nhập nhưng bị camera/bảo vệ phát hiện, không mất gì.';
 else if(t.i){const i=t.i;G.inv.splice(G.inv.indexOf(i),1);if(i.cust){const c=r10(est(i));ad(-c);G.rep=cl(G.rep-3,0,100);msg=`🥷 Trộm đột nhập, lấy mất ${i.icon} ${i.name} của khách sửa đồ! Tiệm đền ${fm(c)}.`}else msg=`🥷 Đêm qua có trộm đột nhập, lấy mất ${i.icon} ${i.name} trong kho (giá trị khoảng ${fm(vis(i))}).`}
 else{const p=t.p,c=r10(est(p.item));G.pawns.splice(G.pawns.indexOf(p),1);ad(-c);G.rep=cl(G.rep-4,0,100);p.npc.aff-=2;msg=`🥷 Trộm lấy mất ${p.item.icon} ${p.item.name} khách đang cầm! Tiệm phải đền ${p.npc.n} ${fm(c)}.`}
